@@ -198,6 +198,72 @@ export function renderLatex(body: string): RenderedLatex {
   return { html, warnings: Array.from(new Set(warnings)) };
 }
 
+/**
+ * Renders one short piece of model prose — a finding label or explanation that
+ * may contain `$inline math$` — as HTML for a card or a tooltip. Entities are
+ * decoded first and the text is escaped again on the way out, so nothing the
+ * model writes can inject markup.
+ */
+export function renderInlineLatex(source: string): string {
+  const decoded = decodeEntities(source);
+
+  // An odd number of dollars means the delimiters cannot be trusted. Showing
+  // the prose as plain text beats typesetting half the sentence as maths.
+  if ((decoded.match(/\$/g)?.length ?? 0) % 2 === 1) {
+    return escapeHtml(decoded).replace(/\n/g, "<br/>");
+  }
+
+  return renderInline(decoded, []);
+}
+
+/** Entities models reach for when they mean a maths symbol. */
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: "\u00a0",
+  times: "\u00d7",
+  divide: "\u00f7",
+  minus: "\u2212",
+  plusmn: "\u00b1",
+  deg: "\u00b0",
+  ne: "\u2260",
+  le: "\u2264",
+  ge: "\u2265",
+  infin: "\u221e",
+  radic: "\u221a",
+  rarr: "\u2192",
+  larr: "\u2190",
+  harr: "\u2194",
+  ndash: "\u2013",
+  mdash: "\u2014",
+  hellip: "\u2026"
+};
+
+/** Leaves anything unrecognised — including bare `&` — exactly as it was. */
+function decodeEntities(source: string): string {
+  return source.replace(
+    /&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g,
+    (match, body: string) => {
+      if (body.startsWith("#")) {
+        const hex = body[1] === "x" || body[1] === "X";
+        const code = Number.parseInt(
+          hex ? body.slice(2) : body.slice(1),
+          hex ? 16 : 10
+        );
+
+        return Number.isFinite(code) && code > 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : match;
+      }
+
+      return NAMED_ENTITIES[body.toLowerCase()] ?? match;
+    }
+  );
+}
+
 /* ---------- source cleanup ---------- */
 
 function stripComments(source: string): string {

@@ -13,6 +13,7 @@ import {
   getSupportedRecorderMimeType
 } from "./utils/media";
 import { captureFrame } from "./utils/capture";
+import { renderInlineLatex } from "./utils/latex";
 
 type RequestPayload = {
   question?: string;
@@ -795,9 +796,19 @@ export default function App() {
                       onClick={() => setActiveIndex(index)}
                     >
                       <span className="result-num">{index + 1}</span>
+                      {/* Model text, typeset by utils/latex.ts: $math$ renders
+                          as maths instead of reaching the user as dollars. */}
                       <span className="result-text">
-                        <strong>{error.label}</strong>
-                        <span>{error.explanation}</span>
+                        <strong
+                          dangerouslySetInnerHTML={{
+                            __html: renderInlineLatex(error.label)
+                          }}
+                        />
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: renderInlineLatex(error.explanation)
+                          }}
+                        />
                       </span>
                     </button>
                   </li>

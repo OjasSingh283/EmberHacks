@@ -1,5 +1,6 @@
 import { RefObject } from "react";
 import { DeskDuckyError } from "../types";
+import { renderInlineLatex } from "../utils/latex";
 
 type Props = {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -164,8 +165,17 @@ export default function CameraView({
                   top: `${Math.min(92, (ymin / 1000) * 100)}%`
                 }}
               >
-                <strong>{error.label}</strong>
-                <span>{error.explanation}</span>
+                {/* Model text, typeset by utils/latex.ts. */}
+                <strong
+                  dangerouslySetInnerHTML={{
+                    __html: renderInlineLatex(error.label)
+                  }}
+                />
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: renderInlineLatex(error.explanation)
+                  }}
+                />
               </div>
             </div>
           );

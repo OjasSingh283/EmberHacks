@@ -46,6 +46,12 @@ For every problem:
 - Explain what is wrong.
 - Give a bounding box around the relevant object or region.
 
+Write the label and the explanation as plain prose. Typeset mathematics as
+LaTeX between single dollar signs, for example $a^2 + b^2$, so the client can
+render it as maths. Never emit HTML tags or HTML entities such as &#247;:
+write the character itself (÷, ×, ≠) or a word such as "divided by". Only use
+$...$ around genuine mathematics, never around a single symbol you could name.
+
 Bounding boxes must use:
 
 [ymin, xmin, ymax, xmax]
