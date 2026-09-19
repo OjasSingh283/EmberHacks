@@ -461,7 +461,7 @@ export default function NotesStudio({ onStatus }: Props) {
       onStatus("LaTeX copied to the clipboard.");
     } catch (copyError) {
       console.error(copyError);
-      setError("This browser would not let DeskDuck use the clipboard.");
+      setError("This browser would not let DeskDucky use the clipboard.");
     }
   }
 
@@ -575,7 +575,7 @@ export default function NotesStudio({ onStatus }: Props) {
 
         <p className="hint">
           Add every page of your written work — upload the photos you already
-          have, or snap them with the camera. DeskDuck transcribes them into
+          have, or snap them with the camera. DeskDucky transcribes them into
           LaTeX and typesets a PDF you can hand in.
         </p>
 
@@ -717,7 +717,7 @@ export default function NotesStudio({ onStatus }: Props) {
         </div>
 
         <label className="field">
-          <span>Reading note for DeskDuck (optional)</span>
+          <span>Reading note for DeskDucky (optional)</span>
           <input
             className="text-input"
             value={instructions}

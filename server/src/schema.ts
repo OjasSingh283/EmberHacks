@@ -26,7 +26,7 @@ export const notesSchema = {
   required: ["pages"],
 };
 
-export const deskDuckSchema = {
+export const deskDuckySchema = {
   type: "object",
   properties: {
     errors: {

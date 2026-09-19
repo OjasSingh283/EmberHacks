@@ -1,4 +1,4 @@
-export type DeskDuckError = {
+export type DeskDuckyError = {
   box_2d: [number, number, number, number];
   label: string;
   explanation: string;
@@ -10,7 +10,7 @@ export type AnalysisUsage = {
 };
 
 export type AnalysisResult = {
-  errors: DeskDuckError[];
+  errors: DeskDuckyError[];
   usage?: AnalysisUsage;
 };
 

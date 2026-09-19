@@ -1,4 +1,4 @@
-# DeskDuck
+# DeskDucky
 
 A browser-based multimodal study desk: a desk debugger plus a handwriting to
 LaTeX/PDF converter.
@@ -6,9 +6,9 @@ LaTeX/PDF converter.
 ## Modes
 
 **Scan desk** — point the webcam at your work, ask a question by text or voice,
-and DeskDuck boxes the problems it can see.
+and DeskDucky boxes the problems it can see.
 
-**Notes → PDF** — add photos of handwritten pages; DeskDuck transcribes them
+**Notes → PDF** — add photos of handwritten pages; DeskDucky transcribes them
 into LaTeX, previews the typeset result and prints a submittable PDF.
 
 ## Architecture
@@ -80,7 +80,7 @@ Allow camera and microphone permissions.
      (or `Ctrl`/`Cmd` + `Enter`), or
    - tap **Speak**, ask out loud, then tap **Stop and send**.
 4. Wait for Gemini.
-5. DeskDuck draws the returned bounding boxes and explanations.
+5. DeskDucky draws the returned bounding boxes and explanations.
 
 If the photo is blurry or the page moved, tap **Retake photo** (or **New scan**
 after a result) to go back to the live view and shoot again.

@@ -5,7 +5,7 @@ import NotesStudio from "./components/NotesStudio";
 import {
   AnalysisResult,
   AnalysisUsage,
-  DeskDuckError
+  DeskDuckyError
 } from "./types";
 import {
   blobToBase64,
@@ -207,7 +207,7 @@ export default function App() {
   const [cameraReady, setCameraReady] = useState(false);
   const [recording, setRecording] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [errors, setErrors] = useState<DeskDuckError[]>([]);
+  const [errors, setErrors] = useState<DeskDuckyError[]>([]);
   const [usage, setUsage] = useState<AnalysisUsage | null>(null);
   const [status, setStatus] = useState("Starting camera...");
   const [question, setQuestion] = useState("");
@@ -218,7 +218,7 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof localStorage === "undefined") return "dark";
-    return localStorage.getItem("deskduck-theme") === "light" ? "light" : "dark";
+    return localStorage.getItem("deskducky-theme") === "light" ? "light" : "dark";
   });
 
   useEffect(() => {
@@ -233,7 +233,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("deskduck-theme", theme);
+    localStorage.setItem("deskducky-theme", theme);
   }, [theme]);
 
   // The webcam is only needed for desk scanning; notes mode uploads files.
@@ -574,7 +574,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="mode-switch" role="tablist" aria-label="DeskDuck mode">
+        <div className="mode-switch" role="tablist" aria-label="DeskDucky mode">
           <button
             className={`mode-tab ${mode === "scan" ? "active" : ""}`}
             onClick={() => setMode("scan")}
@@ -629,8 +629,8 @@ export default function App() {
 
       <p className="subtitle">
         {mode === "scan"
-          ? "Take a photo of your page, then type or say what looks wrong — DeskDuck sends that one frame with your question."
-          : "Photograph your handwritten pages and DeskDuck typesets them into a LaTeX PDF you can hand in."}
+          ? "Take a photo of your page, then type or say what looks wrong — DeskDucky sends that one frame with your question."
+          : "Photograph your handwritten pages and DeskDucky typesets them into a LaTeX PDF you can hand in."}
       </p>
 
       {mode === "scan" ? (
@@ -666,7 +666,7 @@ export default function App() {
             ) : (
               <>
                 Center your page in the frame and tap <strong>Take photo</strong>
-                . DeskDuck sends that one frame together with the question you
+                . DeskDucky sends that one frame together with the question you
                 type or speak — so take it when the page looks right.
               </>
             )}
@@ -823,7 +823,7 @@ export default function App() {
       )}
 
       <footer className="footer">
-        <span>DeskDuck</span>
+        <span>DeskDucky</span>
         <span className="footer-dot" />
         <span>One frame, one question, no video stored.</span>
       </footer>

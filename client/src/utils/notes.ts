@@ -57,7 +57,7 @@ export function escapeLatexText(text: string): string {
   });
 }
 
-export function slugify(text: string, fallback = "deskduck-notes"): string {
+export function slugify(text: string, fallback = "deskducky-notes"): string {
   const slug = text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")

@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { deskDuckSchema, notesSchema } from "./schema.js";
+import { deskDuckySchema, notesSchema } from "./schema.js";
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -33,7 +33,7 @@ export async function analyzeDesk(
   const hasAudio = Boolean(input.audioBase64);
 
   const prompt = `
-You are DeskDuck, a multimodal desk-space debugging tutor.
+You are DeskDucky, a multimodal desk-space debugging tutor.
 
 Analyze this desk image.
 
@@ -99,7 +99,7 @@ ${
     response_format: {
       type: "text",
       mime_type: "application/json",
-      schema: deskDuckSchema,
+      schema: deskDuckySchema,
     },
 
     store: false,
@@ -147,7 +147,7 @@ export type NotesResult = {
 // String.raw keeps the LaTeX examples below readable: a template literal would
 // swallow every lone backslash.
 const notesPrompt = String.raw`
-You are DeskDuck Notes: you turn photos of handwritten pages into LaTeX, so a
+You are DeskDucky Notes: you turn photos of handwritten pages into LaTeX, so a
 student can submit a typed PDF of work they wrote by hand.
 
 You receive photos of one document, in page order. Transcribe every page.

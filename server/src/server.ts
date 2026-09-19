@@ -135,5 +135,5 @@ app.post("/api/notes/transcribe", async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`DeskDuck backend running on http://localhost:${port}`);
+  console.log(`DeskDucky backend running on http://localhost:${port}`);
 });

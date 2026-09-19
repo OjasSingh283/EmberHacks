@@ -1,9 +1,9 @@
 import { RefObject } from "react";
-import { DeskDuckError } from "../types";
+import { DeskDuckyError } from "../types";
 
 type Props = {
   videoRef: RefObject<HTMLVideoElement | null>;
-  errors: DeskDuckError[];
+  errors: DeskDuckyError[];
   imageSrc: string | null;
   showComments: boolean;
   activeIndex: number | null;
