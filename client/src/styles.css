@@ -494,6 +494,56 @@ h1 span {
   border: 2px solid rgba(61, 123, 255, 0.6);
 }
 
+/* Shutter sits over the live feed but under the analysis overlays. */
+.shutter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.shutter:hover:not(:disabled) {
+  background: var(--btn-hover);
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.shutter:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.shutter-ring {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.shutter-ring::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 .scanline {
   position: absolute;
   inset: 0;
@@ -771,6 +821,11 @@ h1 span {
 .btn.primary:hover:not(:disabled) {
   filter: brightness(1.07);
   background: linear-gradient(120deg, var(--accent), var(--accent-2));
+}
+
+/* The photo action spans the row: it comes before any question can be asked. */
+.input-actions .btn.photo {
+  grid-column: 1 / -1;
 }
 
 .btn.mic.recording {
@@ -1540,6 +1595,83 @@ h1 span {
 
 .file-input {
   display: none;
+}
+
+.take-photo {
+  margin-top: 10px;
+}
+
+/* ---------- Crop-free camera capture ---------- */
+
+.capture-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 6, 10, 0.72);
+  backdrop-filter: blur(7px);
+}
+
+.capture-dialog {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
+}
+
+.capture-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.capture-head strong {
+  display: block;
+  font-size: 15px;
+  color: var(--text-strong);
+}
+
+.capture-head span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.capture-stage {
+  position: relative;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--viewer-bg);
+  aspect-ratio: 16 / 9;
+}
+
+.capture-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.capture-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .page-list {

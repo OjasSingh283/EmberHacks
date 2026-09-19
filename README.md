@@ -72,19 +72,31 @@ Allow camera and microphone permissions.
 ## Usage
 
 1. Put paper/code in front of the camera.
-2. Do one of these two things:
+2. Tap **Take photo** (or the shutter button over the live view) to freeze the
+   frame. Nothing is uploaded yet: the camera track is released and only the
+   photo stays, with the microphone still open for a spoken question.
+3. Do one of these two things:
    - **Type** your question in the side panel and press `Send text`
      (or `Ctrl`/`Cmd` + `Enter`), or
    - tap **Speak**, ask out loud, then tap **Stop and send**.
-3. Wait for Gemini.
-4. DeskDuck draws the returned bounding boxes and explanations.
+4. Wait for Gemini.
+5. DeskDuck draws the returned bounding boxes and explanations.
+
+If the photo is blurry or the page moved, tap **Retake photo** (or **New scan**
+after a result) to go back to the live view and shoot again.
 
 The panel shows the input token / output token count of the last request.
 
 ### Notes → PDF
 
-1. Switch to **Notes → PDF** in the header (the webcam is released).
-2. Add one photo per page — tap the drop zone or drag images onto it. Reorder
+1. Switch to **Notes → PDF** in the header (scan mode's webcam is released).
+2. Add one photo per page in any mix of the two ways:
+   - **Upload** — tap the drop zone or drag images onto it, or
+   - **Take photo with camera** — the capture dialog opens its own camera, and
+     every shutter press appends a page, so you can shoot page after page
+     before pressing *Done*.
+
+   Snapped and uploaded pages are downscaled and encoded the same way. Reorder
    or remove pages in the list.
 3. Optionally set a title and name, and add a reading note such as "keep the
    German technical terms".
@@ -106,7 +118,9 @@ of being dropped silently.
 
 ## What gets sent to Gemini
 
-Every scan request sends exactly one still camera frame plus **one** question:
+Every scan request sends exactly one still camera frame plus **one** question.
+The frame is the photo you took with the shutter button, so the boxes are drawn
+on the image you approved, never on a frame grabbed at submit time:
 
 - typed text -> `image + text`
 - spoken question -> `image + audio`
@@ -115,7 +129,8 @@ If the text box has content when you stop a recording, the text is sent and the
 audio is dropped, so a question is never paid for twice. Video is never sent.
 
 A notes request (`POST /api/notes/transcribe`) sends up to 20 downscaled page
-JPEGs plus the optional reading note, and nothing else.
+JPEGs plus the optional reading note, and nothing else — pages grabbed with the
+capture dialog are normalised exactly like uploaded files.
 
 ## Important MVP limitation
 

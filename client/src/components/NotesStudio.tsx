@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnalysisUsage, NotesPage, NotesResult } from "../types";
 import { dataUrlToBase64 } from "../utils/media";
-import { fileToPageImage } from "../utils/image";
+import { fileToPageImage, videoFrameToPageImage } from "../utils/image";
 import { renderLatex } from "../utils/latex";
 import {
   buildLatexDocument,
@@ -90,6 +90,28 @@ function CopyIcon() {
   );
 }
 
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4 8.6A1.6 1.6 0 0 1 5.6 7h2.1l1.2-1.9h6.2L16.3 7h2.1A1.6 1.6 0 0 1 20 8.6v7.9a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 16.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="12"
+        cy="12.4"
+        r="3.1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
 function SparkIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden>
@@ -113,8 +135,14 @@ function nextPageId(): string {
 
 export default function NotesStudio({ onStatus }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   const [pages, setPages] = useState<NotesPage[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const [snapped, setSnapped] = useState(0);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -129,6 +157,74 @@ export default function NotesStudio({ onStatus }: Props) {
   const [activePageId, setActivePageId] = useState<string | null>(null);
 
   const rendered = useMemo(() => renderLatex(latex), [latex]);
+
+  // The dialog owns its own camera stream: scan mode's webcam is released as
+  // soon as notes mode starts, so a page has to be snapped here.
+  useEffect(() => {
+    if (!cameraOpen) return;
+
+    let cancelled = false;
+
+    async function startPreview() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
+          audio: false
+        });
+
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        cameraStreamRef.current = stream;
+
+        if (cameraVideoRef.current) {
+          cameraVideoRef.current.srcObject = stream;
+          await cameraVideoRef.current.play();
+        }
+
+        setCameraReady(true);
+      } catch (streamError) {
+        console.error(streamError);
+
+        if (!cancelled) {
+          setCameraError(
+            "Camera permission failed — allow it and open the camera again."
+          );
+        }
+      }
+    }
+
+    void startPreview();
+
+    return () => {
+      cancelled = true;
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = null;
+      }
+
+      setCameraReady(false);
+    };
+  }, [cameraOpen]);
+
+  useEffect(() => {
+    if (!cameraOpen) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setCameraOpen(false);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [cameraOpen]);
 
   const latexDocument = useMemo(
     () => buildLatexDocument({ title, author, body: latex }),
@@ -182,6 +278,47 @@ export default function NotesStudio({ onStatus }: Props) {
         `${pages.length + added.length} page(s) ready — convert when every page is in.`
       );
     }
+  }
+
+  function openCamera() {
+    setCameraError("");
+    setSnapped(0);
+    setCameraOpen(true);
+  }
+
+  function closeCamera() {
+    setCameraOpen(false);
+  }
+
+  function snapPhoto() {
+    const video = cameraVideoRef.current;
+
+    if (!video || !cameraReady) return;
+
+    let dataUrl: string;
+
+    try {
+      dataUrl = videoFrameToPageImage(video);
+    } catch (snapError) {
+      console.error(snapError);
+      setCameraError(
+        snapError instanceof Error ? snapError.message : "Could not snap the page."
+      );
+      return;
+    }
+
+    const pageNumber = pages.length + 1;
+
+    // The dialog stays open so page after page can be shot in one sitting.
+    setPages((current) => [
+      ...current,
+      { id: nextPageId(), name: `Camera page ${current.length + 1}`, dataUrl }
+    ]);
+    setSnapped((count) => count + 1);
+    setError("");
+    onStatus(
+      `${pageNumber} page(s) ready — shoot the next one or close the camera.`
+    );
   }
 
   function movePage(index: number, delta: number) {
@@ -437,8 +574,9 @@ export default function NotesStudio({ onStatus }: Props) {
         </div>
 
         <p className="hint">
-          Photograph every page of your written work. DeskDuck transcribes it
-          into LaTeX and typesets a PDF you can hand in.
+          Add every page of your written work — upload the photos you already
+          have, or snap them with the camera. DeskDuck transcribes them into
+          LaTeX and typesets a PDF you can hand in.
         </p>
 
         <div
@@ -483,6 +621,16 @@ export default function NotesStudio({ onStatus }: Props) {
             }}
           />
         </div>
+
+        <button
+          className="btn take-photo"
+          onClick={openCamera}
+          disabled={adding}
+          type="button"
+        >
+          <CameraIcon />
+          Take photo with camera
+        </button>
 
         {hasPages && (
           <ol className="page-list">
@@ -661,6 +809,78 @@ export default function NotesStudio({ onStatus }: Props) {
           </>
         )}
       </aside>
+
+      {cameraOpen && (
+        <div
+          className="capture-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Take a page photo"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeCamera();
+          }}
+        >
+          <div className="capture-dialog">
+            <div className="capture-head">
+              <div>
+                <strong>Photograph a page</strong>
+                <span>
+                  Fill the frame with one page and keep it flat — each shot is
+                  added to the page list.
+                </span>
+              </div>
+
+              <button
+                className="mini"
+                onClick={closeCamera}
+                title="Close the camera"
+                aria-label="Close the camera"
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="capture-stage">
+              <video
+                ref={cameraVideoRef}
+                className="camera live"
+                autoPlay
+                playsInline
+                muted
+              />
+
+              {!cameraReady && (
+                <div className="capture-status">
+                  {cameraError || "Starting camera..."}
+                </div>
+              )}
+            </div>
+
+            <div className="capture-actions">
+              <button className="btn" onClick={closeCamera} type="button">
+                {snapped > 0 ? "Done" : "Cancel"}
+              </button>
+
+              <button
+                className="btn primary"
+                onClick={snapPhoto}
+                disabled={!cameraReady}
+                type="button"
+              >
+                <CameraIcon />
+                Take photo
+              </button>
+            </div>
+
+            <p className="input-hint">
+              {snapped > 0
+                ? `${snapped} page(s) added — shoot the next one, or press Done.`
+                : "Nothing is sent yet: the photos are only transcribed when you press Convert to LaTeX."}
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

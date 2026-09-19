@@ -11,6 +11,8 @@ type Props = {
   lastInput: string;
   onToggleComments: () => void;
   onScanAgain: () => void;
+  onTakePhoto: () => void;
+  canTakePhoto: boolean;
 };
 
 export default function CameraView({
@@ -22,7 +24,9 @@ export default function CameraView({
   analyzing,
   lastInput,
   onToggleComments,
-  onScanAgain
+  onScanAgain,
+  onTakePhoto,
+  canTakePhoto
 }: Props) {
   return (
     <div className="viewer">
@@ -59,8 +63,20 @@ export default function CameraView({
             <span />
           </div>
           <p>Center your page in the frame</p>
-          <span>Then type or speak your question.</span>
+          <span>Then take a photo and ask your question.</span>
         </div>
+      )}
+
+      {!imageSrc && (
+        <button
+          className="shutter"
+          onClick={onTakePhoto}
+          disabled={!canTakePhoto}
+          type="button"
+        >
+          <span className="shutter-ring" aria-hidden />
+          Take photo
+        </button>
       )}
 
       {imageSrc && (
@@ -108,7 +124,7 @@ export default function CameraView({
                 strokeLinejoin="round"
               />
             </svg>
-            New scan
+            {lastInput ? "New scan" : "Retake photo"}
           </button>
         </div>
       )}

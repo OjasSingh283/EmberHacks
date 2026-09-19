@@ -118,6 +118,43 @@ function SparkIcon() {
   );
 }
 
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4 8.6A1.6 1.6 0 0 1 5.6 7h2.1l1.2-1.9h6.2L16.3 7h2.1A1.6 1.6 0 0 1 20 8.6v7.9a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 16.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="12"
+        cy="12.4"
+        r="3.1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function RetakeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ScanIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden>
@@ -157,6 +194,12 @@ function SheetIcon() {
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Microphone kept alive after the photo is frozen, so voice questions still
+  // work on the still frame even though the camera track is released.
+  const micStreamRef = useRef<MediaStream | null>(null);
+  // Microphone acquired on demand (e.g. after notes mode) and released as soon
+  // as the recording stops.
+  const recordingStreamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingMimeTypeRef = useRef("audio/webm");
@@ -183,6 +226,8 @@ export default function App() {
 
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      micStreamRef.current?.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
@@ -215,6 +260,9 @@ export default function App() {
   async function startCamera() {
     try {
       setCapturedImage(null);
+      // A previous photo may still be holding the microphone; release it so the
+      // fresh stream is the only owner of the device.
+      stopMicStream();
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -233,7 +281,7 @@ export default function App() {
       }
 
       setCameraReady(true);
-      setStatus("Ready — type a question or tap the mic.");
+      setStatus("Ready — center your page and take a photo.");
     } catch (error) {
       console.error(error);
       setStatus(
@@ -242,8 +290,45 @@ export default function App() {
     }
   }
 
+  function stopMicStream() {
+    micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    micStreamRef.current = null;
+  }
+
   function stopCamera() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    stopMicStream();
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    setCameraReady(false);
+  }
+
+  // Audio tracks that can feed a recording: the retained microphone first, then
+  // the live camera stream.
+  function liveAudioTracks(): MediaStreamTrack[] {
+    const mic = micStreamRef.current;
+
+    if (mic && mic.getAudioTracks().length > 0) return mic.getAudioTracks();
+
+    return streamRef.current?.getAudioTracks() ?? [];
+  }
+
+  // Freeze the frame: the video track is released so the photo on screen is
+  // exactly the photo that gets sent, while the microphone stays open.
+  function freezeCamera() {
+    const stream = streamRef.current;
+
+    if (!stream) return;
+
+    stream.getVideoTracks().forEach((track) => track.stop());
+
+    const audioTracks = stream.getAudioTracks();
+    micStreamRef.current =
+      audioTracks.length > 0 ? new MediaStream(audioTracks) : null;
     streamRef.current = null;
 
     if (videoRef.current) {
@@ -253,29 +338,63 @@ export default function App() {
     setCameraReady(false);
   }
 
+  function takePhoto() {
+    const video = videoRef.current;
+
+    if (!video || !cameraReady || capturedImage || analyzing) return;
+
+    let imageDataUrl: string;
+
+    try {
+      imageDataUrl = captureFrame(video);
+    } catch (error) {
+      console.error(error);
+      setStatus("Could not capture the camera frame.");
+      return;
+    }
+
+    freezeCamera();
+
+    setCapturedImage(imageDataUrl);
+    setErrors([]);
+    setUsage(null);
+    setActiveIndex(null);
+    setLastInput("");
+    setShowComments(true);
+    setStatus("Photo taken — type or speak your question.");
+  }
+
   function submitText() {
     const text = question.trim();
 
-    if (!text || !cameraReady || analyzing) return;
+    if (!text || !capturedImage || analyzing) return;
 
     setQuestion("");
     setLastInput(`Text — ${text}`);
     void runAnalysis({ question: text });
   }
 
-  function startRecording() {
-    const stream = streamRef.current;
+  async function startRecording() {
+    if (!capturedImage || analyzing) return;
 
-    if (!stream) return;
+    const tracks = liveAudioTracks();
+    let audioStream: MediaStream;
 
-    const audioTracks = stream.getAudioTracks();
-
-    if (audioTracks.length === 0) {
-      setStatus("No microphone track is available.");
+    try {
+      if (tracks.length > 0) {
+        audioStream = new MediaStream(tracks);
+      } else {
+        // Camera and microphone were released by notes mode: ask for the
+        // microphone only, and drop it again once the recording ends.
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recordingStreamRef.current = audioStream;
+      }
+    } catch (error) {
+      console.error(error);
+      setStatus("No microphone available — type your question instead.");
       return;
     }
 
-    const audioStream = new MediaStream(audioTracks);
     const mimeType = getSupportedRecorderMimeType();
 
     try {
@@ -302,6 +421,8 @@ export default function App() {
       setStatus("Listening — tap stop when you finish.");
     } catch (error) {
       console.error(error);
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current = null;
       setStatus("Could not start microphone recording.");
     }
   }
@@ -315,6 +436,11 @@ export default function App() {
     recorderRef.current = null;
 
     recorder.onstop = async () => {
+      // The chunks are already collected, so any microphone we opened just for
+      // this recording can be released before the upload starts.
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current = null;
+
       try {
         const audioBlob = new Blob(audioChunksRef.current, {
           type: recordingMimeTypeRef.current
@@ -355,20 +481,22 @@ export default function App() {
   }
 
   function toggleRecording() {
-    if (!cameraReady || analyzing) return;
+    if (!capturedImage || analyzing) return;
 
     if (recording) {
       stopRecording();
     } else {
-      startRecording();
+      void startRecording();
     }
   }
 
   async function runAnalysis(payload: RequestPayload) {
-    const video = videoRef.current;
+    // The photo is taken with the shutter button, never at submit time, so the
+    // annotations land on the exact frame the user saw and approved.
+    const imageDataUrl = capturedImage;
 
-    if (!video) {
-      setStatus("The camera is not ready yet.");
+    if (!imageDataUrl) {
+      setStatus("Take a photo first, then ask your question.");
       return;
     }
 
@@ -377,23 +505,6 @@ export default function App() {
     setUsage(null);
     setActiveIndex(null);
     setStatus("Analyzing your desk...");
-
-    // Capture the frame at submit time: a single JPEG, never a video clip.
-    let imageDataUrl: string;
-
-    try {
-      imageDataUrl = captureFrame(video);
-    } catch (error) {
-      console.error(error);
-      setAnalyzing(false);
-      setStatus("Could not capture the camera frame.");
-      return;
-    }
-
-    // The photo has been taken: freeze it on screen and shut the camera down
-    // so the results are annotated on the exact image that was sent.
-    setCapturedImage(imageDataUrl);
-    stopCamera();
 
     try {
       const response = await fetch("/api/analyze", {
@@ -442,7 +553,9 @@ export default function App() {
     void startCamera();
   }
 
-  const ready = cameraReady && !analyzing;
+  // A question can only be asked about a photo that already exists.
+  const canAsk = Boolean(capturedImage) && !analyzing;
+  const canTakePhoto = cameraReady && !capturedImage && !recording && !analyzing;
 
   return (
     <main className="app">
@@ -516,7 +629,7 @@ export default function App() {
 
       <p className="subtitle">
         {mode === "scan"
-          ? "Show your paper, then type or say what looks wrong — DeskDuck sends one camera frame with your question."
+          ? "Take a photo of your page, then type or say what looks wrong — DeskDuck sends that one frame with your question."
           : "Photograph your handwritten pages and DeskDuck typesets them into a LaTeX PDF you can hand in."}
       </p>
 
@@ -532,6 +645,8 @@ export default function App() {
           lastInput={lastInput}
           onToggleComments={() => setShowComments((value) => !value)}
           onScanAgain={startNewScan}
+          onTakePhoto={takePhoto}
+          canTakePhoto={canTakePhoto}
         />
 
         <aside className="panel">
@@ -541,9 +656,20 @@ export default function App() {
           </div>
 
           <p className="hint">
-            Write a question and press <strong>Send text</strong>, or tap{" "}
-            <strong>Speak</strong> and talk. Typing costs far fewer tokens than
-            talking, so text wins if you do both.
+            {capturedImage ? (
+              <>
+                Your photo is frozen. Write a question and press{" "}
+                <strong>Send text</strong>, or tap <strong>Speak</strong> and
+                talk. Typing costs far fewer tokens than talking, so text wins
+                if you do both.
+              </>
+            ) : (
+              <>
+                Center your page in the frame and tap <strong>Take photo</strong>
+                . DeskDuck sends that one frame together with the question you
+                type or speak — so take it when the page looks right.
+              </>
+            )}
           </p>
 
           <textarea
@@ -558,7 +684,7 @@ export default function App() {
             }}
             placeholder='Try: "Where did my induction step go wrong?"'
             rows={4}
-            disabled={!ready}
+            disabled={!canAsk}
           />
 
           <div className="input-hint">
@@ -566,10 +692,32 @@ export default function App() {
           </div>
 
           <div className="input-actions">
+            {capturedImage ? (
+              <button
+                className="btn photo"
+                onClick={startNewScan}
+                disabled={analyzing || recording}
+                type="button"
+              >
+                <RetakeIcon />
+                Retake photo
+              </button>
+            ) : (
+              <button
+                className="btn photo primary"
+                onClick={takePhoto}
+                disabled={!canTakePhoto}
+                type="button"
+              >
+                <CameraIcon />
+                Take photo
+              </button>
+            )}
+
             <button
               className="btn primary"
               onClick={submitText}
-              disabled={!ready || !question.trim()}
+              disabled={!canAsk || !question.trim()}
               type="button"
             >
               <SendIcon />
@@ -579,7 +727,7 @@ export default function App() {
             <button
               className={`btn mic ${recording ? "recording" : ""}`}
               onClick={toggleRecording}
-              disabled={!ready}
+              disabled={!canAsk}
               aria-pressed={recording}
               type="button"
             >
@@ -591,7 +739,7 @@ export default function App() {
           <div className="question-card">
             <span>SENT</span>
             <p>
-              {lastInput || "Camera frame + either your typed text or your voice."}
+              {lastInput || "Photo + either your typed text or your voice."}
             </p>
           </div>
 
@@ -615,7 +763,7 @@ export default function App() {
             </div>
           )}
 
-          {!analyzing && errors.length === 0 && capturedImage && (
+          {!analyzing && errors.length === 0 && capturedImage && lastInput && (
             <div className="all-clear">
               <div className="all-clear-mark">✓</div>
               <div>
